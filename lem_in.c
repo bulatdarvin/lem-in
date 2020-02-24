@@ -677,71 +677,33 @@ t_ant 	*ant_pathes(int ants, t_plist *pathes, t_farm *farm)
 	return (tmp_ant);
 }
 
-int		move_forward(t_ant **ant, int ind, int count)
-{
-	t_ant *tmp;
-
-	tmp = *ant;
-/*	if (tmp->pos == NULL)
-	{
-		count--;
-		*ant = (*ant)->next;
-	}
-*/	while (ind-- && tmp && tmp->pos)
-	{
-	//	tmp->pos = tmp->pos->next;
-		tmp = tmp->next;
-	}
-	return (count);
-}
-
 int		print_room(t_ant *ant, int ind, int count, int rooms)
 {
 	static int i = 1;
 	if (ant->pos)
 	{
 		while (ind-- && ant && rooms)
-		{/*
+		{
 			while (!ant->pos && ant->next)
 			{
 				ant->used = 0;
 				ant = ant->next;
-				//count--;
 			}
-			if (!ant->pos && !ant->next)
-			{
-				ft_printf("break\n");
+			if (!ant)
 				break ;
-			}
-			*/
+			if (!ant->pos)
+				break ;
 			while (!ant->used && ant)
 				ant = ant->next;
 			rooms--;
-			//if (!ant->pos)
-			//	ft_printf("WWWWW");
 			if (ant->used)
 				ft_printf("L%d-%s", ant->id, ant->pos->room->name);
 			ant->pos = ant->pos->next;
 			ant = ant->next;
-			while (!ant->pos && ant->next)
-			{
-				ant->used = 0;
-				ant = ant->next;
-				if (!ant)
-					break ;
-			//	count--;				
-			}
-			//ant = ant->next;
-			if (!ant->pos && !ant->next)
-			{
-				ft_printf("break\n");
-				break ;
-			}
 			if (ant)
 				ft_printf(" ");
 		}
 		ft_printf("\n");
-		ft_printf("I: %d   R:  %d   IND: %d\n", i++, rooms, ind);
 	}
 	return (count);
 }
@@ -756,7 +718,7 @@ int		count_ind(t_ant *ant)
 		if (ant->next)
 		{
 			tmp = ant->next;
-			while (ant->pos->room != tmp->pos->room && tmp)
+			while (ant->pos->room != tmp->pos->room && tmp->next)
 			{
 				i++;
 				tmp = tmp->next;
@@ -775,20 +737,19 @@ void	movement(t_ant	*ant, int count, int rooms)
 {
 	int ind;
 	t_ant *head;
+	int	tmp;
 
 	ind = count_ind(ant);
 	head = ant;
 	head_mv(&head, ind);
 	while (ant && count != 0)
 	{
-		ft_printf("ASFS\n");
 		count = print_room(ant, ind, count, rooms);
-		//count = move_forward(&ant, ind, count);
-		ind += count_ind(head);
-		head_mv(&head, ind);
+		tmp = count_ind(head);
+		ind += tmp;
+		head_mv(&head, tmp);
 		while (!ant->pos)
 		{
-		//	ft_printf("%d    count:  %d\n", ant->id, count);
 			count--;
 			ant->used = 0;
 			ant = ant->next;
