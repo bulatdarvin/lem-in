@@ -78,9 +78,9 @@ void	delete_rooms(t_room *room)
 			free(room);
 			room = tmp;
 		}
-		free(room);
 		free(room->name);
 		free(room->links);
+		free(room);
 	}
 }
 
@@ -196,7 +196,9 @@ void	start_or_end(t_farm	*farm, char *str, int fd)
 		get_next_line(fd, &str);
 		if (is_comment(str))
 			ft_error(farm, "Invalid input");
-		add_room(farm, str);
+		if (add_room(farm, str))
+			ft_error(farm, "Invalid command");
+		ft_putendl(str);
 		farm->start = farm->rooms;
 		farm->rooms->state = START;	
 	}
@@ -208,7 +210,9 @@ void	start_or_end(t_farm	*farm, char *str, int fd)
 		get_next_line(fd, &str);
 		if (is_comment(str))
 			ft_error(farm, "Invalid input");
-		add_room(farm, str);
+		if (add_room(farm, str))
+			ft_error(farm, "Invalid command");
+		ft_putendl(str);
 		farm->end = farm->rooms;
 		farm->rooms->state = END;	
 	}
@@ -221,7 +225,7 @@ int		linked(t_room *r1, t_room *r2)
 	t_room *tmp;
 
 	i = 0;
-/*	tmp = r1;
+	tmp = r1;
 	while (r1->links[i])
 	{
 		if (r1->links[i] == r2)
@@ -235,7 +239,7 @@ int		linked(t_room *r1, t_room *r2)
 			return (1);
 		i++;
 	}
-*/	return (0);
+	return (0);
 }
 
 void	link_rooms(t_farm *farm, char *tmp)
@@ -257,10 +261,16 @@ void	link_rooms(t_farm *farm, char *tmp)
 	if (!r1 || !r2)
 		ft_error(farm, "No room to link");
 	if (r1->links == NULL)
+	{
 		r1->links = (t_room **)malloc(sizeof(t_room *) * farm->rooms_count);
+		r1->links[0] = NULL;
+	}
 	if (r2->links == NULL)
+	{
 		r2->links = (t_room **)malloc(sizeof(t_room *) * farm->rooms_count);
-	if (linked(r1, r2))
+		r2->links[0] = NULL;
+	}
+/*	if (linked(r1, r2))
 	{
 		ft_printf("r1: %s  r2: %s\n", r1->name, r2->name);
 		ft_error(farm, "Has double linked");
@@ -281,6 +291,26 @@ void	link_rooms(t_farm *farm, char *tmp)
 		r1->links[r1->links_size] = NULL;
 		r2->links[r2->links_size++] = r1;
 		r2->links[r2->links_size] = NULL;
+	}*/
+	if (!linked(r1, r2))
+	{
+		if (r1 == farm->start)
+		{
+			r1->links[r1->links_size++] = r2;
+			r1->links[r1->links_size] = NULL;
+		}
+		else if (r2 == farm->start)
+		{
+			r2->links[r2->links_size++] = r1;
+			r2->links[r2->links_size] = NULL;
+		}
+		else
+		{
+			r1->links[r1->links_size++] = r2;
+			r1->links[r1->links_size] = NULL;
+			r2->links[r2->links_size++] = r1;
+			r2->links[r2->links_size] = NULL;
+		}	
 	}
 }
 
@@ -320,13 +350,17 @@ t_farm		*create_farm(int fd)
 	farm->end = NULL;
 	if (get_next_line(fd, &str) > 0)
 	{
+		ft_putendl(str);
 		farm->ants_count = ft_atoi(str);
+		if (farm->ants_count <= 0)
+			ft_error(farm, "Ants must be positive");
 		free(str);
 	}
 	else
 		ft_error(farm, "Open non-existing file or directory");
 	while(get_next_line(fd, &str) > 0)
 	{
+		ft_putendl(str);
 		if (is_comment(str))
 		{
 			start_or_end(farm, str, fd);
@@ -677,14 +711,34 @@ t_ant 	*ant_pathes(int ants, t_plist *pathes, t_farm *farm)
 	return (tmp_ant);
 }
 
-int		print_room(t_ant *ant, int ind, int count, int rooms)
+int		not_used_room(t_path **path, t_room *room, t_room *end)
+{
+	t_path *tmp;
+
+	tmp = *path;
+	if (*path)
+		while (tmp)
+		{
+			if (tmp->room == room && tmp->room != end)
+				return (0);
+			tmp = tmp->next;
+		}
+	add_to_path(path, room);
+	return (1);
+}
+
+int		print_room(t_ant *ant, int ind, int count, int rooms, t_room *end)
 {
 	static int i = 1;
+	t_path *tmp;
+
+	tmp = NULL;
+	//ft_printf("IND:  %d\n", i);
 	if (ant->pos)
 	{
-		while (ind-- && ant && rooms)
+		while (ind-- && ant && rooms && not_used_room(&tmp, ant->pos->room, end))
 		{
-			while (!ant->pos && ant->next)
+		/*	while (ant && !ant->pos)
 			{
 				ant->used = 0;
 				ant = ant->next;
@@ -693,7 +747,7 @@ int		print_room(t_ant *ant, int ind, int count, int rooms)
 				break ;
 			if (!ant->pos)
 				break ;
-			while (!ant->used && ant)
+		*/	while (!ant->used && ant)
 				ant = ant->next;
 			rooms--;
 			if (ant->used)
@@ -702,9 +756,16 @@ int		print_room(t_ant *ant, int ind, int count, int rooms)
 			ant = ant->next;
 			if (ant)
 				ft_printf(" ");
+			while (ant && !ant->pos)
+			{
+				ant->used = 0;
+				ant = ant->next;
+			}
 		}
+		i++;
 		ft_printf("\n");
 	}
+	delete_path(tmp);
 	return (count);
 }
 
@@ -733,7 +794,7 @@ void	head_mv(t_ant **head, int ind)
 		*head = (*head)->next;
 }
 
-void	movement(t_ant	*ant, int count, int rooms)
+void	movement(t_ant	*ant, int count, int rooms, t_room *end)
 {
 	int ind;
 	t_ant *head;
@@ -744,7 +805,7 @@ void	movement(t_ant	*ant, int count, int rooms)
 	head_mv(&head, ind);
 	while (ant && count != 0)
 	{
-		count = print_room(ant, ind, count, rooms);
+		count = print_room(ant, ind, count, rooms, end);
 		tmp = count_ind(head);
 		ind += tmp;
 		head_mv(&head, tmp);
@@ -779,6 +840,10 @@ int 	main()
 	tmp = 0;
 	int fd = open("maps/test", O_RDONLY);
 	farm = create_farm(0);
+	if (farm->rooms == NULL)
+		return (0);
+	if (farm->end->links == NULL || farm->start->links == NULL)
+		ft_error(farm, "No solution");
 	list = NULL;
 	while (1)
 	{
@@ -791,21 +856,23 @@ int 	main()
 //		print_path(path);
 //		delete_path(path);
 	}
-	ft_printf("%d\n", list_size(list));
+	ft_printf("\n");
+	//ft_printf("%d\n", list_size(list));
 	if (!list_size(list))
 		ft_error(farm, "No solution");
 	sort_list_by_length(&list);
 	ant = ant_pathes(farm->ants_count, list, farm);
 /*	t_ant *t;
 	t = ant;
-	t = t->next->next;
+	t = t->next->next->n;
+	ft_printf("PATH\n");
 	while (t->pos)
 	{
 		ft_printf("%s\n", t->pos->room->name);
 		t->pos = t->pos->next;
 	}
-*/	movement(ant, farm->ants_count, farm->rooms_count - 1);
-	delete_farm(farm);
+*/	movement(ant, farm->ants_count, farm->rooms_count - 1, farm->end);
+//	delete_farm(farm);
 	delete_plist(list);
 	delete_ants(ant);
 	return (0);
