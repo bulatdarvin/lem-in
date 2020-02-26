@@ -53,7 +53,7 @@ class Ant:
         self.path = None
         self.name = name
         self.x, self.y = start
-        self.img = pygame.image.load(sys.path[0] + "/img/ant.png").convert_alpha()
+        self.img = pygame.image.load(sys.path[0] + "/ant.png").convert_alpha()
         self.move_list = None
         self.ind = 0
     
@@ -99,7 +99,7 @@ class Game:
         self.surf = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
         self.clock = pygame.time.Clock()
         pygame.display.set_caption("lem-in visualizer\n")
-        self.background = pygame.image.load(sys.path[0] + "/img/background.jpg").convert()
+        self.background = pygame.image.load(sys.path[0] + "/background.jpg").convert()
         self.FPS = 60
         self.ants_num = 0
         self.roommap = {}
